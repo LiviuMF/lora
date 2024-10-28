@@ -59,17 +59,20 @@ async def post_temperature(
         payload: Dict,
 ):
     if credentials:
-        sensor_data = payload["object"]
-        sensor_data.update(
-            {
-                "dev_eui": payload["deviceInfo"]["devEui"],
-                "time": payload["time"]
-            }
-        )
-        sensor_data = {k.lower(): str(v) for k, v in sensor_data.items()}
-        db_client = DatabaseClient()
-        db_client.save(LHT65(**sensor_data))
-        return f"Successfully received payload {sensor_data}"
+        try:
+            sensor_data = payload["object"]
+            sensor_data.update(
+                {
+                    "dev_eui": payload["deviceInfo"]["devEui"],
+                    "time": payload["time"]
+                }
+            )
+            sensor_data = {k.lower(): str(v) for k, v in sensor_data.items()}
+            db_client = DatabaseClient()
+            db_client.save(LHT65(**sensor_data))
+            return f"Successfully received payload {sensor_data}"
+        except KeyError:
+            pass
     else:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
