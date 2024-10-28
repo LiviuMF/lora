@@ -5,9 +5,15 @@ from typing import Optional
 
 
 @dataclass
-class Temperature:
-    appliance_id: str
-    temperature: float
+class LHT65:
+    batv: float
+    bat_status: float
+    ext_sensor: str
+    hum_sht: float
+    tempc_ds: float
+    tempc_sht: float
+    dev_eui: str
+    time: str
     timestamp: Optional[str] = datetime.now().strftime("%Y%m%d%H%M%S")
 
 
@@ -15,21 +21,23 @@ class DatabaseClient:
     conn = sqlite3.connect('temperature.db', check_same_thread=False)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
+    dtypes = " TEXT, ".join(LHT65.__annotations__.keys())
     cursor.execute(
         'CREATE TABLE IF NOT EXISTS '
-        'temperature (timestamp TEXT, appliance_id TEXT, temperature REAL)'
+        f'temperature ({dtypes} TEXT);'
     )
 
-    def fetch_by_id(self, appliance_id: str):
-        sql_query = f"SELECT * FROM temperature WHERE appliance_id = '{appliance_id}'"
+    def fetch_by_id(self, dev_eui: str):
+        sql_query = f"SELECT * FROM temperature WHERE dev_eui = '{dev_eui}'"
         rows = self.cursor.execute(sql_query)
-        return [Temperature(**row) for row in rows]
+        return [LHT65(**row) for row in rows]
 
-    def save(self, temperature: Temperature):
-        appliance_id, temperature, timestamp = temperature.__dict__.values()
+    def save(self, sensor_data: LHT65):
+        sensor_dict = sensor_data.__dict__
+        insert_values = "', '".join(sensor_dict.values())
         sql_query = (
-                    "INSERT INTO temperature (timestamp, appliance_id, temperature)"
-                    f"VALUES({timestamp}, '{appliance_id}', {temperature});"
+                    f"INSERT INTO temperature {tuple(sensor_dict.keys())} "
+                    f"VALUES('{insert_values}');"
         )
         self.cursor.execute(sql_query)
         self.conn.commit()
