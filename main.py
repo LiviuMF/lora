@@ -2,9 +2,9 @@ from fastapi import FastAPI, HTTPException, status, Depends
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 import secrets
-from typing import Annotated
+from typing import Dict, Annotated
 
-from models import Temperature, DatabaseClient
+from models import DatabaseClient, LHT65
 import config
 
 
@@ -54,14 +54,22 @@ def fetch_records(appliance_id: str, credentials: Annotated[HTTPBasicCredentials
 
 
 @app.post("/temp")
-def post_temperature(
+async def post_temperature(
         credentials: Annotated[HTTPBasicCredentials, Depends(verify_credentials)],
-        payload: Temperature
+        payload: Dict,
 ):
     if credentials:
+        sensor_data = payload["object"]
+        sensor_data.update(
+            {
+                "dev_eui": payload["deviceInfo"]["devEui"],
+                "time": payload["time"]
+            }
+        )
+        sensor_data = {k.lower(): str(v) for k, v in sensor_data.items()}
         db_client = DatabaseClient()
-        db_client.save(payload)
-        return f"Successfully received payload {payload.__dict__}"
+        db_client.save(LHT65(**sensor_data))
+        return f"Successfully received payload {sensor_data}"
     else:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
