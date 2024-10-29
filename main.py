@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, status, Depends
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from uvicorn.config import LOGGING_CONFIG
 
 import secrets
 from typing import Dict, Annotated
@@ -12,6 +13,7 @@ app = FastAPI()
 
 security = HTTPBasic()
 
+LOGGING_CONFIG["formatters"]["default"]["fmt"] = "%(asctime)s [%(name)s] %(levelprefix)s %(message)s"
 
 def verify_credentials(
     credentials: Annotated[HTTPBasicCredentials, Depends(security)],
