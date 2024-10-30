@@ -2,13 +2,13 @@ from fastapi import FastAPI, HTTPException, status, Depends
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from uvicorn.config import LOGGING_CONFIG
 
-from datetime import datetime, timedelta
 import secrets
 from typing import Dict, Annotated
 
-from db import DatabaseClient
-from models import LHT65
 import config
+from db import DatabaseClient
+from data_cleaner import process_payload
+from models import LHT65
 
 
 app = FastAPI()
@@ -68,15 +68,7 @@ async def post_temperature(
 ):
     if credentials:
         try:
-            sensor_data: dict = payload["object"]
-            sensor_data.update(
-                {
-                    "dev_eui": payload["deviceInfo"]["devEui"],
-                    "time": payload["time"],
-                    "current_time": update_date_to_current_tz(payload["time"]),
-                }
-            )
-            sensor_data = {k.lower(): str(v) for k, v in sensor_data.items()}
+            sensor_data = process_payload(payload)
             db_client = DatabaseClient()
             db_client.save(LHT65(**sensor_data))
             return f"Successfully received payload {sensor_data}"
@@ -87,10 +79,3 @@ async def post_temperature(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Credentials are invalid"
         )
-
-
-def update_date_to_current_tz(date_str: str):
-    _date = datetime.fromisoformat(date_str).replace(tzinfo=None)
-    tz_diff: timedelta = datetime.now() - _date
-    hours: float = tz_diff.total_seconds() // 3600
-    return _date + timedelta(hours=hours)

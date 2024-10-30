@@ -1,16 +1,18 @@
+from datetime import datetime
 from dataclasses import dataclass
-import sqlite3
 from typing import Optional
 
 
 @dataclass
 class LHT65:
-    batv: float
-    bat_status: float
+    batv: str
+    bat_status: str
     ext_sensor: str
-    hum_sht: float
-    tempc_ds: float
-    tempc_sht: float
+    hum_sht: str
+    tempc_ds: str
+    tempc_sht: str
     dev_eui: str
-    time: str
+    timestamp: str
     current_time: Optional[str]
+    date: str
+    time: str
