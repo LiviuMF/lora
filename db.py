@@ -18,6 +18,7 @@ class DatabaseClient:
             appliance_id: str,
             from_date: str
     ):
+        from_date = from_date or '1900-01-01'
         sql_query = (
             "SELECT * FROM temperature "
             f"WHERE dev_eui = '{appliance_id}' AND "
