@@ -13,12 +13,16 @@ class DatabaseClient:
         f'temperature ({dtypes} TEXT);'
     )
 
-    def fetch_by_id(self, dev_eui: str):
+    def fetch_records_for_appliance(
+            self,
+            appliance_id: str,
+            from_date: str
+    ):
         sql_query = (
             "SELECT * FROM temperature "
-            f"WHERE dev_eui = '{dev_eui}' "
+            f"WHERE dev_eui = '{appliance_id}' AND "
+            f"date >= DATE('{from_date}') "
             "ORDER BY date DESC, time DESC "
-            "LIMIT 10"
         )
         rows = self.cursor.execute(sql_query)
         return [LHT65(**row) for row in rows]

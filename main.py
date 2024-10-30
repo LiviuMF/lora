@@ -3,7 +3,7 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from uvicorn.config import LOGGING_CONFIG
 
 import secrets
-from typing import Dict, Annotated
+from typing import Dict, Annotated, Optional
 
 import config
 from db import DatabaseClient
@@ -48,12 +48,21 @@ def status_check():
 
 
 @app.get("/records/{appliance_id}")
-def fetch_records(appliance_id: str, credentials: Annotated[HTTPBasicCredentials, Depends(verify_credentials)]):
+def fetch_records(
+        appliance_id: str,
+        credentials: Annotated[
+            HTTPBasicCredentials, Depends(verify_credentials)
+        ],
+        from_date: Optional[str] = None
+) -> dict:
     if credentials:
         db_client = DatabaseClient()
         return {
-            "results": db_client.fetch_by_id(appliance_id)
+            "results": db_client.fetch_records_for_appliance(
+                appliance_id, from_date
+            )
         }
+
     else:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
