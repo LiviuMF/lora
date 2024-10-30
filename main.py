@@ -2,10 +2,12 @@ from fastapi import FastAPI, HTTPException, status, Depends
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from uvicorn.config import LOGGING_CONFIG
 
+from datetime import datetime, timedelta
 import secrets
 from typing import Dict, Annotated
 
-from models import DatabaseClient, LHT65
+from db import DatabaseClient
+from models import LHT65
 import config
 
 
@@ -49,8 +51,9 @@ def status_check():
 def fetch_records(appliance_id: str, credentials: Annotated[HTTPBasicCredentials, Depends(verify_credentials)]):
     if credentials:
         db_client = DatabaseClient()
-        results = db_client.fetch_by_id(appliance_id)
-        return {"results": results}
+        return {
+            "results": db_client.fetch_by_id(appliance_id)
+        }
     else:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -65,11 +68,12 @@ async def post_temperature(
 ):
     if credentials:
         try:
-            sensor_data = payload["object"]
+            sensor_data: dict = payload["object"]
             sensor_data.update(
                 {
                     "dev_eui": payload["deviceInfo"]["devEui"],
-                    "time": payload["time"]
+                    "time": payload["time"],
+                    "current_time": update_date_to_current_tz(payload["time"]),
                 }
             )
             sensor_data = {k.lower(): str(v) for k, v in sensor_data.items()}
@@ -84,3 +88,9 @@ async def post_temperature(
             detail=f"Credentials are invalid"
         )
 
+
+def update_date_to_current_tz(date_str: str):
+    _date = datetime.fromisoformat(date_str).replace(tzinfo=None)
+    tz_diff: timedelta = datetime.now() - _date
+    hours: float = tz_diff.total_seconds() // 3600
+    return _date + timedelta(hours=hours)
