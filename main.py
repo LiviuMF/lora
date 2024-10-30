@@ -53,13 +53,14 @@ def fetch_records(
         credentials: Annotated[
             HTTPBasicCredentials, Depends(verify_credentials)
         ],
-        from_date: Optional[str] = None
+        from_date: Optional[str] = None,
+        to_date: Optional[str] = None
 ) -> dict:
     if credentials:
         db_client = DatabaseClient()
         return {
             "results": db_client.fetch_records_for_appliance(
-                appliance_id, from_date
+                appliance_id, from_date=from_date, to_date=to_date
             )
         }
 

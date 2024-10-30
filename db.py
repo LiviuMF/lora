@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import sqlite3
 
 from models import LHT65
@@ -16,15 +18,19 @@ class DatabaseClient:
     def fetch_records_for_appliance(
             self,
             appliance_id: str,
-            from_date: str
+            from_date: str,
+            to_date: str
     ):
         from_date = from_date or '1900-01-01'
+        to_date = to_date or datetime.now().date().isoformat()
         sql_query = (
             "SELECT * FROM temperature "
             f"WHERE dev_eui = '{appliance_id}' AND "
-            f"date >= DATE('{from_date}') "
-            "ORDER BY date DESC, time DESC "
+            f"date >= DATE('{from_date}') AND "
+            f"date <= DATE('{to_date}') "
+            "ORDER BY date DESC, time DESC;"
         )
+
         rows = self.cursor.execute(sql_query)
         return [LHT65(**row) for row in rows]
 
