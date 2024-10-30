@@ -14,7 +14,12 @@ class DatabaseClient:
     )
 
     def fetch_by_id(self, dev_eui: str):
-        sql_query = f"SELECT * FROM temperature WHERE dev_eui = '{dev_eui}' ORDER BY current_time DESC"
+        sql_query = (
+            "SELECT * FROM temperature "
+            f"WHERE dev_eui = '{dev_eui}' "
+            "ORDER BY date DESC, time DESC "
+            "LIMIT 10"
+        )
         rows = self.cursor.execute(sql_query)
         return [LHT65(**row) for row in rows]
 
