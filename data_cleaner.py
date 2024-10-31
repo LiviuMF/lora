@@ -20,7 +20,8 @@ def process_payload(payload: dict) -> dict:
 
 
 def convert_timestamp_to_current_tz(timestamp: str) -> datetime:
-    _date: datetime = datetime.fromisoformat(timestamp).replace(tzinfo=None)
+    timestamp_cleaned = timestamp.split(".")[0]
+    _date: datetime = datetime.fromisoformat(timestamp_cleaned).replace(tzinfo=None)
     tz_diff: timedelta = datetime.now() - _date
     hours: float = tz_diff.total_seconds() // 3600
     return _date + timedelta(hours=hours)
