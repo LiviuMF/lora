@@ -2,7 +2,7 @@ from datetime import datetime
 
 import sqlite3
 
-from models import LHT65, LHTClient
+from models import LHT65, LHTClientView
 
 
 class DatabaseClient:

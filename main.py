@@ -71,7 +71,7 @@ def fetch_records(
         )
 
 @app.get("/records/{appliance_id}/latest")
-def fetch_records(
+def fetch_latest_records(
         appliance_id: str,
         credentials: Annotated[
             HTTPBasicCredentials, Depends(verify_credentials)
