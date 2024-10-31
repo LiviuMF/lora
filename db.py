@@ -45,7 +45,8 @@ class DatabaseClient:
                 f"dev_eui = '{appliance_id}' AND "
                 "DATE(date) >= DATE('now', '-1 day') "
             "GROUP BY temperature.date, strftime('%H', TIME(temperature.time)) "
-            "ORDER BY DATE(temperature.date) DESC, TIME(temperature.time) DESC"
+            "ORDER BY DATE(temperature.date) DESC, TIME(temperature.time) DESC "
+            "LIMIT 24;"
         )
         rows = self.cursor.execute(sql_query)
         return [LHTClientView(**row) for row in rows]

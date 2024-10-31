@@ -20,21 +20,23 @@ TODAY = datetime.now()
 
 def plot_graph_and_table_from_df(df: pd.DataFrame, client_name: str, fridge: str):
     df['tempc_ds'] = df['tempc_ds'].astype(float)
-    df['hour'] = df['time'].str.split('.').str[0].str.split(':').str[0]
-    df['time'] = df['time'].str.split('.').str[0]
-    df['hour'] = df['hour'].astype(int)
-    x, _, _, y = df.columns
+    df['time'] = df['date'] + ' ' + df['time']
+    df['time'] = pd.to_datetime(df['time'])
+
+    y, _, x = df.columns
     df.plot(x=x, y=y, kind='line')
     plt.savefig('email_attachments/graph.png')
 
     fig, ax = plt.subplots(figsize=(8, 7))
     ax.axis('off')
+
+    df = df[['time', 'tempc_ds']]
     tbl = table(
         ax,
         df,
         loc='center',
         cellLoc='center',
-        colWidths=[0.18] * len(df.columns)
+        colWidths=[0.25] * len(df.columns)
     )
     tbl.auto_set_font_size(False)
     tbl.set_fontsize(10)
@@ -49,7 +51,6 @@ def plot_graph_and_table_from_df(df: pd.DataFrame, client_name: str, fridge: str
     small_table_data = [
         ['Client', client_name],
         ['Frigider', fridge],
-        ['Data', TODAY],
     ]
     small_table = plt.table(
         cellText=small_table_data,
