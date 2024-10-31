@@ -102,7 +102,7 @@ async def post_temperature(
             db_client = DatabaseClient()
             db_client.save(LHT65(**sensor_data))
             return f"Successfully received payload {sensor_data}"
-        except KeyError:
+        except:
             pass
     else:
         raise HTTPException(
