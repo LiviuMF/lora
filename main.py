@@ -70,6 +70,26 @@ def fetch_records(
             detail="Incorrect credentials",
         )
 
+@app.get("/records/{appliance_id}/latest")
+def fetch_records(
+        appliance_id: str,
+        credentials: Annotated[
+            HTTPBasicCredentials, Depends(verify_credentials)
+        ]
+) -> dict:
+    if credentials:
+        db_client = DatabaseClient()
+        return {
+            "results": db_client.fetch_records_last_24hours(
+                appliance_id
+            )
+        }
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect credentials",
+        )
+
 
 @app.post("/temp")
 async def post_temperature(

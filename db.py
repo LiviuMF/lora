@@ -2,7 +2,7 @@ from datetime import datetime
 
 import sqlite3
 
-from models import LHT65
+from models import LHT65, LHTClient
 
 
 class DatabaseClient:
@@ -33,6 +33,21 @@ class DatabaseClient:
 
         rows = self.cursor.execute(sql_query)
         return [LHT65(**row) for row in rows]
+
+    def fetch_records_last_24hours(
+            self,
+            appliance_id: str,
+):
+        sql_query = (
+            "SELECT temperature.date, MAX(temperature.time) as time, tempc_ds "
+            "FROM temperature "
+            "WHERE "
+                f"dev_eui = '{appliance_id}' AND "
+                "DATE(date) >= DATE('now', '-1 day') "
+            "GROUP BY temperature.date, strftime('%H', TIME(temperature.time))"
+        )
+        rows = self.cursor.execute(sql_query)
+        return [LHTClientView(**row) for row in rows]
 
     def save(self, sensor_data: LHT65):
         sensor_dict = sensor_data.__dict__

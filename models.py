@@ -16,3 +16,10 @@ class LHT65:
     current_time: Optional[str]
     date: str
     time: str
+
+
+@dataclass
+class LHTClientView:
+    tempc_ds: str
+    date: str
+    time: str
