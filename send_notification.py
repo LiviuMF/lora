@@ -1,139 +1,39 @@
-import db
-
 import config
-from datetime import datetime
-from io import BytesIO
-import smtplib
-
-from email.mime.application import MIMEApplication
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
-from matplotlib.offsetbox import OffsetImage, AnnotationBbox
+import db
+from models import DeviceData
+import mail
 
 import pandas as pd
-from pandas.plotting import table
-
-from models import DeviceData
 
 
-TODAY = datetime.now()
+db_client = db.DatabaseClient()
 
+dev_owners: list[tuple] = db_client.fetch_all_owners()
+for dev_owner_name, dev_owner_email in dev_owners:
 
-def plot_table_from_df(df: pd.DataFrame, client_name: str, fridge: str):
-    df['tempc_ds'] = df['tempc_ds'].apply(lambda x: float(x))
-    df['time'] = df['date'] + ' ' + df['time']
-    df['time'] = pd.to_datetime(df['time'])
-
-    fig, ax = plt.subplots(figsize=(8, 7))
-    ax.axis('off')
-
-    df = df[['time', 'tempc_ds']]
-    tbl = table(
-        ax,
-        df,
-        loc='center',
-        cellLoc='center',
-        colWidths=[0.25] * len(df.columns)
-    )
-    tbl.auto_set_font_size(False)
-    tbl.set_fontsize(10)
-    tbl.scale(1, 1.6)
-
-    logo = mpimg.imread('cohe_logo.jpg')
-    img_box = OffsetImage(logo, zoom=0.1)
-    xy = (1, 0)
-    ab = AnnotationBbox(img_box, xy, xycoords='axes fraction', frameon=False)
-    ax.add_artist(ab)
-
-    small_table_data = [
-        ['Client', client_name],
-        ['Frigider', fridge],
-    ]
-    small_table = plt.table(
-        cellText=small_table_data,
-        colWidths=(0.1, 0.1),
-        loc='center',
-        cellLoc='center',
-        bbox=[-0.15, 1, 0.3, 0.15]
-    )
-    small_table.auto_set_font_size(False)
-    small_table.set_fontsize(10)
-    small_table.scale(1, 1.5)
-
-    table_buffer = BytesIO()
-    fig.savefig(table_buffer, format='pdf')
-
-    return table_buffer
-
-
-def build_email_message(
-        to_email: str,
-        subject: str,
-        message_body: str,
-        attachments: list,
-        from_email: str = config.FROM_EMAIL,
-):
-    msg = MIMEMultipart()
-    msg["from"] = from_email
-    msg["to"] = to_email
-    msg["subject"] = subject
-    msg.attach(MIMEText(message_body, 'plain'))
-
-    if attachments:
-        for table_pdf, device_data in attachments:
-            attachment = MIMEApplication(table_pdf.getvalue(), _subtype='pdf')
-            attachment.add_header(
-                'Content-Disposition',
-                'attachment',
-                filename=f'{device_data.dev_owner}_{device_data.dev_name}_{TODAY.strftime("%Y%m%d%_H%M%S")}.pdf'
+    attachment_details: list[tuple] = []
+    owner_devices: list[DeviceData] = db_client.fetch_owner_devices(dev_owner_name)
+    for device in owner_devices:
+        sensor_data = db_client.fetch_records_last_24hours(device.dev_eui)
+        if sensor_data:
+            pdf_table = mail.plot_table_from_df(
+                df=pd.DataFrame(
+                    [
+                        data.__dict__
+                        for data in sensor_data
+                    ]
+                ),
+                client_name=dev_owner_name,
+                fridge=device.dev_name,
             )
-            msg.attach(attachment)
-
-    return msg.as_string()
-
-
-def send_email(
-        to_email: str,
-        message_body: str,
-        from_email: str = 'office@cohe.ro',
-):
-    server = smtplib.SMTP(config.EMAIL_HOST, config.EMAIL_PORT)
-    server.starttls()
-    server.login(config.EMAIL_USERNAME, config.EMAIL_PASSWORD)
-    server.sendmail(from_addr=from_email, to_addrs=to_email, msg=message_body)
-    server.quit()
-
-
-if __name__ == '__main__':
-    db_client = db.DatabaseClient()
-
-    dev_owners: list[tuple] = db_client.fetch_all_owners()
-    for dev_owner_name, dev_owner_email in dev_owners:
-        attachment_details: list[tuple] = []
-        owner_devices: list[DeviceData] = db_client.fetch_owner_devices(dev_owner_name)
-        for device in owner_devices:
-            sensor_data = db_client.fetch_records_last_24hours(device.dev_eui)
-            if sensor_data:
-                pdf_table = plot_table_from_df(
-                    df=pd.DataFrame(
-                        [
-                            data.__dict__
-                            for data in sensor_data
-                        ]
-                    ),
-                    client_name=dev_owner_name,
-                    fridge=device.dev_name,
-                )
-                attachment_details.append((pdf_table, device))
-            else:
-                print(f'Device {device.dev_eui} has not send any data yet')
-                continue
-        message = build_email_message(
-            to_email=dev_owner_email,
-            subject=f'Hourly temperature for {dev_owner_name}',
-            message_body='This is an email from Horepa.ro with hourly temperature',
-            attachments=attachment_details,
-        )
-        send_email(to_email=dev_owner_email, message_body=message)
+            attachment_details.append((pdf_table, device))
+        else:
+            print(f'Device {device.dev_eui} has not send any data yet')
+            continue
+    message = mail.build_email_message(
+        to_email=dev_owner_email,
+        subject=f'Hourly temperature for {dev_owner_name}',
+        message_body='This is an email from Horepa.ro with hourly temperature',
+        attachments=attachment_details,
+    )
+    mail.send_email(to_email=config.ADMIN_EMAIL, message_body=message)
