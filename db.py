@@ -88,7 +88,7 @@ class DatabaseClient:
         rows = self.cursor.execute(sql_query)
         return [DeviceData(**row) for row in rows]
 
-    def save(self, sensor_data: DeviceReadings | DeviceData):
+    def save(self, sensor_data: DeviceReadings or DeviceData):
         sensor_dict = sensor_data.__dict__
         insert_values = "', '".join(sensor_dict.values())
         sql_query = (
