@@ -8,7 +8,7 @@ from typing import Dict, Annotated, Optional
 import config
 from db import DatabaseClient
 from data_cleaner import process_payload
-from models import LHT65
+from models import DeviceReadings, DeviceData
 
 
 app = FastAPI()
@@ -100,8 +100,26 @@ async def post_temperature(
         try:
             sensor_data = process_payload(payload)
             db_client = DatabaseClient()
-            db_client.save(LHT65(**sensor_data))
+            db_client.save(DeviceReadings(**sensor_data))
             return f"Successfully received payload {sensor_data}"
+        except:
+            pass
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Credentials are invalid"
+        )
+
+@app.post("/device")
+async def post_device_data(
+        credentials: Annotated[HTTPBasicCredentials, Depends(verify_credentials)],
+        payload: Dict,
+):
+    if credentials:
+        try:
+            db_client = DatabaseClient()
+            db_client.save(DeviceData(**payload))
+            return f"Successfully received payload {payload}"
         except:
             pass
     else:

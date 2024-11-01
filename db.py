@@ -2,17 +2,24 @@ from datetime import datetime
 
 import sqlite3
 
-from models import LHT65, LHTClientView
+from models import DeviceReadings, DeviceReadingsClientView, DeviceData
 
 
 class DatabaseClient:
     conn = sqlite3.connect('temperature.db', check_same_thread=False)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
-    dtypes = " TEXT, ".join(LHT65.__annotations__.keys())
+
+    dtypes = " TEXT, ".join(DeviceReadings.__annotations__.keys())
     cursor.execute(
         'CREATE TABLE IF NOT EXISTS '
         f'temperature ({dtypes} TEXT);'
+    )
+
+    dtypes = " TEXT, ".join(DeviceData.__annotations__.keys())
+    cursor.execute(
+        'CREATE TABLE IF NOT EXISTS '
+        f'device_data ({dtypes} TEXT);'
     )
 
     def fetch_records_for_appliance(
@@ -32,7 +39,7 @@ class DatabaseClient:
         )
 
         rows = self.cursor.execute(sql_query)
-        return [LHT65(**row) for row in rows]
+        return [DeviceReadings(**row) for row in rows]
 
     def fetch_records_last_24hours(
             self,
@@ -49,13 +56,47 @@ class DatabaseClient:
             "LIMIT 24;"
         )
         rows = self.cursor.execute(sql_query)
-        return [LHTClientView(**row) for row in rows]
+        return [DeviceReadingsClientView(**row) for row in rows]
 
-    def save(self, sensor_data: LHT65):
+    def fetch_device_details(
+            self,
+            appliance_id: str,
+    ):
+        sql_query = (
+            "SELECT * FROM device_data "
+            f"WHERE dev_eui = '{appliance_id}'"
+        )
+        row = self.cursor.execute(sql_query).fetchone()
+        return DeviceData(**row)
+
+    def fetch_all_owners(self):
+        sql_query = (
+            "SELECT "
+                "DISTINCT(dev_owner) as dev_owner, dev_owner_email "
+            "FROM device_data"
+        )
+        rows = self.cursor.execute(sql_query)
+        return [
+            (
+                row['dev_owner'],
+                row['dev_owner_email']
+            )
+            for row in rows
+        ]
+
+    def fetch_owner_devices(self, dev_owner_name: str):
+        sql_query = (
+            "SELECT * FROM device_data "
+            f"WHERE dev_owner = '{dev_owner_name}'"
+        )
+        rows = self.cursor.execute(sql_query)
+        return [DeviceData(**row) for row in rows]
+
+    def save(self, sensor_data: DeviceReadings | DeviceData):
         sensor_dict = sensor_data.__dict__
         insert_values = "', '".join(sensor_dict.values())
         sql_query = (
-                    f"INSERT INTO temperature {tuple(sensor_dict.keys())} "
+                    f"INSERT INTO {sensor_data.Meta.table_name} {tuple(sensor_dict.keys())} "
                     f"VALUES('{insert_values}');"
         )
         self.cursor.execute(sql_query)

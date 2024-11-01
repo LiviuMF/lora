@@ -2,6 +2,7 @@ import db
 
 import config
 from datetime import datetime
+from io import BytesIO
 import smtplib
 
 from email.mime.application import MIMEApplication
@@ -14,18 +15,16 @@ from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 import pandas as pd
 from pandas.plotting import table
 
+from models import DeviceData
+
 
 TODAY = datetime.now()
 
 
-def plot_graph_and_table_from_df(df: pd.DataFrame, client_name: str, fridge: str):
-    df['tempc_ds'] = df['tempc_ds'].astype(float)
+def plot_table_from_df(df: pd.DataFrame, client_name: str, fridge: str):
+    df['tempc_ds'] = df['tempc_ds'].apply(lambda x: float(x))
     df['time'] = df['date'] + ' ' + df['time']
     df['time'] = pd.to_datetime(df['time'])
-
-    y, _, x = df.columns
-    df.plot(x=x, y=y, kind='line')
-    plt.savefig('email_attachments/graph.png')
 
     fig, ax = plt.subplots(figsize=(8, 7))
     ax.axis('off')
@@ -62,14 +61,18 @@ def plot_graph_and_table_from_df(df: pd.DataFrame, client_name: str, fridge: str
     small_table.auto_set_font_size(False)
     small_table.set_fontsize(10)
     small_table.scale(1, 1.5)
-    fig.savefig('email_attachments/table.pdf')
+
+    table_buffer = BytesIO()
+    fig.savefig(table_buffer, format='pdf')
+
+    return table_buffer
 
 
 def build_email_message(
         to_email: str,
         subject: str,
         message_body: str,
-        attachment_paths: list[str],
+        attachments: list,
         from_email: str = config.FROM_EMAIL,
 ):
     msg = MIMEMultipart()
@@ -78,23 +81,15 @@ def build_email_message(
     msg["subject"] = subject
     msg.attach(MIMEText(message_body, 'plain'))
 
-    if attachment_paths:
-        for attachment_path in attachment_paths:
-            with open(attachment_path, 'rb') as file:
-                attachment_type = attachment_path.split('.')[-1]
-                if attachment_type not in config.ALLOWED_ATTACHMENT_TYPES:
-                    raise ValueError(
-                        f'Unsupported attachment type\nAllowed types are: '
-                        f'{config.ALLOWED_ATTACHMENT_TYPES}'
-                    )
-
-                attachment = MIMEApplication(file.read(), _subtype=attachment_type)
-                attachment.add_header(
-                    'Content-Disposition',
-                    'attachment',
-                    filename=f'horepa_temp_{TODAY.strftime("%Y%m%d%H%M%S")}.{attachment_type}'
-                )
-                msg.attach(attachment)
+    if attachments:
+        for table_pdf, device_data in attachments:
+            attachment = MIMEApplication(table_pdf.getvalue(), _subtype='pdf')
+            attachment.add_header(
+                'Content-Disposition',
+                'attachment',
+                filename=f'{device_data.dev_owner}_{device_data.dev_name}_{TODAY.strftime("%Y%m%d%_H%M%S")}.pdf'
+            )
+            msg.attach(attachment)
 
     return msg.as_string()
 
@@ -113,21 +108,32 @@ def send_email(
 
 if __name__ == '__main__':
     db_client = db.DatabaseClient()
-    sensor_data = db_client.fetch_records_last_24hours('a84041bd0259e851')
-    plot_graph_and_table_from_df(
-        df=pd.DataFrame(
-            [
-                data.__dict__
-                for data in sensor_data
-            ]
-        ),
-        client_name='Cimbru',
-        fridge='F1',
-    )
-    message = build_email_message(
-        to_email=config.TO_EMAIL,
-        subject='Hourly temperature',
-        message_body='This is an email from Horepa.ro with hourly temperature',
-        attachment_paths=['email_attachments/graph.png', 'email_attachments/table.pdf'],
-    )
-    send_email(to_email=config.TO_EMAIL, message_body=message)
+
+    dev_owners: list[tuple] = db_client.fetch_all_owners()
+    for dev_owner_name, dev_owner_email in dev_owners:
+        attachment_details: list[tuple] = []
+        owner_devices: list[DeviceData] = db_client.fetch_owner_devices(dev_owner_name)
+        for device in owner_devices:
+            sensor_data = db_client.fetch_records_last_24hours(device.dev_eui)
+            if sensor_data:
+                pdf_table = plot_table_from_df(
+                    df=pd.DataFrame(
+                        [
+                            data.__dict__
+                            for data in sensor_data
+                        ]
+                    ),
+                    client_name=dev_owner_name,
+                    fridge=device.dev_name,
+                )
+                attachment_details.append((pdf_table, device))
+            else:
+                print(f'Device {device.dev_eui} has not send any data yet')
+                continue
+        message = build_email_message(
+            to_email=dev_owner_email,
+            subject=f'Hourly temperature for {dev_owner_name}',
+            message_body='This is an email from Horepa.ro with hourly temperature',
+            attachments=attachment_details,
+        )
+        send_email(to_email=dev_owner_email, message_body=message)
