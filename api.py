@@ -127,3 +127,20 @@ async def post_device_data(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Credentials are invalid"
         )
+
+@app.get("/records/devices")
+def fetch_all_device_data(
+        credentials: Annotated[
+            HTTPBasicCredentials, Depends(verify_credentials)
+        ]
+) -> dict:
+    if credentials:
+        db_client = DatabaseClient()
+        return {
+            "results": db_client.fetch_all_device_data()
+        }
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect credentials",
+        )

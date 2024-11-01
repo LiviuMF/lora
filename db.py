@@ -58,16 +58,12 @@ class DatabaseClient:
         rows = self.cursor.execute(sql_query)
         return [DeviceReadingsClientView(**row) for row in rows]
 
-    def fetch_device_details(
-            self,
-            appliance_id: str,
-    ):
+    def fetch_all_device_data(self):
         sql_query = (
             "SELECT * FROM device_data "
-            f"WHERE dev_eui = '{appliance_id}'"
         )
-        row = self.cursor.execute(sql_query).fetchone()
-        return DeviceData(**row)
+        rows = self.cursor.execute(sql_query)
+        return [DeviceData(**row) for row in rows]
 
     def fetch_all_owners(self):
         sql_query = (
