@@ -53,14 +53,12 @@ def fetch_records(
         credentials: Annotated[
             HTTPBasicCredentials, Depends(verify_credentials)
         ],
-        from_date: Optional[str] = None,
-        to_date: Optional[str] = None
 ) -> dict:
     if credentials:
         db_client = DatabaseClient()
         return {
             "results": db_client.fetch_records_for_appliance(
-                appliance_id, from_date=from_date, to_date=to_date
+                appliance_id
             )
         }
 
@@ -122,6 +120,25 @@ async def post_device_data(
             db_client = DatabaseClient()
             db_client.save(DeviceData(**payload))
             return f"Successfully received payload {payload}"
+        except:
+            pass
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Credentials are invalid"
+        )
+
+
+@app.post("/remove-device/{appliance_id}")
+async def post_device_data(
+        credentials: Annotated[HTTPBasicCredentials, Depends(verify_credentials)],
+        appliance_id: str,
+):
+    if credentials:
+        try:
+            db_client = DatabaseClient()
+            db_client.remove_device(appliance_id)
+            return f"Successfully removed device {appliance_id}"
         except:
             pass
     else:
