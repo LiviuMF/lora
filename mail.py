@@ -4,12 +4,13 @@ from datetime import datetime
 from io import BytesIO
 import smtplib
 
+from data_cleaner import create_df_for_plotting
+
 from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 import matplotlib.pyplot as plt
-import pandas as pd
 import pymupdf
 
 
@@ -41,14 +42,9 @@ def plot_report(data: list[dict], client_name: str, client_address: str, device_
     return report_buffer
 
 
-def plot_graph(data: list[dict]):
-    # prepare dataframe for plotting
-    df = pd.DataFrame(data)
-    df['tempc_ds'] = df['tempc_ds'].apply(lambda x: float(x))
-    df['time'] = df['date'] + ' ' + df['time']
-    df['time'] = pd.to_datetime(df['time'])
+def plot_graph(df_data: list[dict]):
+    df = create_df_for_plotting(df_data)
 
-    # plot graph
     df.plot(x='time', y='tempc_ds', kind='line', color='#e5b75f', legend=False)
     plt.gca().axes.get_xaxis().set_visible(False)
     plt.gca().yaxis.tick_right()

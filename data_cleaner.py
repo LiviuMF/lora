@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta
 
+import pandas as pd
+
 
 def process_payload(payload: dict) -> dict:
     current_timestamp: datetime = convert_timestamp_to_current_tz(
@@ -25,3 +27,11 @@ def convert_timestamp_to_current_tz(timestamp: str) -> datetime:
     tz_diff: timedelta = datetime.now() - _date
     hours: float = tz_diff.total_seconds() // 3600
     return _date + timedelta(hours=hours)
+
+
+def create_df_for_plotting(df_data: list[dict]) -> pd.DataFrame:
+    df = pd.DataFrame(df_data)
+    df['tempc_ds'] = df['tempc_ds'].apply(lambda x: float(x))
+    df['time'] = df['date'] + ' ' + df['time']
+    df['time'] = pd.to_datetime(df['time'])
+    return df

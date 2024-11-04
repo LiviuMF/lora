@@ -112,7 +112,7 @@ async def post_temperature(
         )
 
 
-@app.post("/device")
+@app.post("/create-device")
 async def post_device_data(
         credentials: Annotated[HTTPBasicCredentials, Depends(verify_credentials)],
         payload: Dict,
@@ -131,7 +131,7 @@ async def post_device_data(
         )
 
 
-@app.get("/records/devices")
+@app.get("/devices")
 def fetch_all_device_data(
         credentials: Annotated[
             HTTPBasicCredentials, Depends(verify_credentials)
