@@ -3,9 +3,6 @@ import db
 from models import DeviceData
 import mail
 
-import pandas as pd
-
-
 db_client = db.DatabaseClient()
 
 dev_owners: list[tuple] = db_client.fetch_all_owners()
@@ -16,15 +13,14 @@ for dev_owner_name, dev_owner_email in dev_owners:
     for device in owner_devices:
         sensor_data = db_client.fetch_records_last_24hours(device.dev_eui)
         if sensor_data:
-            pdf_table = mail.plot_table_from_df(
-                df=pd.DataFrame(
-                    [
+            pdf_table = mail.plot_report(
+                data=[
                         data.__dict__
                         for data in sensor_data
-                    ]
-                ),
+                    ],
                 client_name=dev_owner_name,
-                fridge=device.dev_name,
+                client_address='My Address',
+                device_name=device.dev_name,
             )
             attachment_details.append((pdf_table, device))
         else:

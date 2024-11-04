@@ -25,11 +25,9 @@ class DatabaseClient:
     def fetch_records_for_appliance(
             self,
             appliance_id: str,
-            from_date: str,
-            to_date: str
+            from_date: str = '1900-01-01',
+            to_date: str = datetime.now().date().isoformat()
     ):
-        from_date = from_date or '1900-01-01'
-        to_date = to_date or datetime.now().date().isoformat()
         sql_query = (
             "SELECT * FROM temperature "
             f"WHERE dev_eui = '{appliance_id}' AND "

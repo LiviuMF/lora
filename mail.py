@@ -1,6 +1,5 @@
-import db
-
 import config
+
 from datetime import datetime
 from io import BytesIO
 import smtplib
@@ -8,62 +7,55 @@ import smtplib
 from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
-from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
+import matplotlib.pyplot as plt
 import pandas as pd
-from pandas.plotting import table
+import pymupdf
 
 
 TODAY = datetime.now()
 
 
-def plot_table_from_df(df: pd.DataFrame, client_name: str, fridge: str):
+def plot_report(data: list[dict], client_name: str, client_address: str, device_name: str):
+    template_pdf = pymupdf.open('media/pdf_template.pdf')
+
+    page = template_pdf[0]
+    page.insert_text((50, 195), f'"{client_name}"', fontsize=12, color=(0, 0, 0))
+    page.insert_text((50, 210), f"{client_address}", fontsize=11, color=(0, 0, 0))
+    page.insert_text((216, 205), f"{device_name}", fontsize=12, color=(0, 0, 0))
+
+    image_rect = pymupdf.Rect(260, -200, 560, 500)
+    graph = plot_graph(data)
+    page.insert_image(image_rect, stream=graph.getvalue())
+
+    row_height = 20.18
+    for index, device in enumerate(data):
+        text_position = (80, 295+(index * row_height))
+        page.insert_text(text_position, f"{device['date']}  {device['time']}", fontsize=12, color=(0, 0, 0))
+        page.insert_text((text_position[0]+300, text_position[1]), device['tempc_ds'], fontsize=12, color=(0, 0, 0))
+
+
+    report_buffer = BytesIO()
+    template_pdf.save(report_buffer)
+
+    return report_buffer
+
+
+def plot_graph(data: list[dict]):
+    # prepare dataframe for plotting
+    df = pd.DataFrame(data)
     df['tempc_ds'] = df['tempc_ds'].apply(lambda x: float(x))
     df['time'] = df['date'] + ' ' + df['time']
     df['time'] = pd.to_datetime(df['time'])
 
-    fig, ax = plt.subplots(figsize=(8, 7))
-    ax.axis('off')
+    # plot graph
+    df.plot(x='time', y='tempc_ds', kind='line', color='#e5b75f', legend=False)
+    plt.gca().axes.get_xaxis().set_visible(False)
+    plt.gca().yaxis.tick_right()
+    graph_buffer = BytesIO()
+    plt.savefig(graph_buffer, format='png', transparent=True)
 
-    df = df[['time', 'tempc_ds']]
-    tbl = table(
-        ax,
-        df,
-        loc='center',
-        cellLoc='center',
-        colWidths=[0.25] * len(df.columns)
-    )
-    tbl.auto_set_font_size(False)
-    tbl.set_fontsize(10)
-    tbl.scale(1, 1.6)
-
-    logo = mpimg.imread('cohe_logo.jpg')
-    img_box = OffsetImage(logo, zoom=0.1)
-    xy = (1, 0)
-    ab = AnnotationBbox(img_box, xy, xycoords='axes fraction', frameon=False)
-    ax.add_artist(ab)
-
-    small_table_data = [
-        ['Client', client_name],
-        ['Frigider', fridge],
-    ]
-    small_table = plt.table(
-        cellText=small_table_data,
-        colWidths=(0.1, 0.1),
-        loc='center',
-        cellLoc='center',
-        bbox=[-0.15, 1, 0.3, 0.15]
-    )
-    small_table.auto_set_font_size(False)
-    small_table.set_fontsize(10)
-    small_table.scale(1, 1.5)
-
-    table_buffer = BytesIO()
-    fig.savefig(table_buffer, format='pdf')
-
-    return table_buffer
+    return graph_buffer
 
 
 def build_email_message(

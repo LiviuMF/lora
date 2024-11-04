@@ -70,6 +70,7 @@ def fetch_records(
             detail="Incorrect credentials",
         )
 
+
 @app.get("/records/{appliance_id}/latest")
 def fetch_latest_records(
         appliance_id: str,
@@ -110,6 +111,7 @@ async def post_temperature(
             detail=f"Credentials are invalid"
         )
 
+
 @app.post("/device")
 async def post_device_data(
         credentials: Annotated[HTTPBasicCredentials, Depends(verify_credentials)],
@@ -127,6 +129,7 @@ async def post_device_data(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Credentials are invalid"
         )
+
 
 @app.get("/records/devices")
 def fetch_all_device_data(
